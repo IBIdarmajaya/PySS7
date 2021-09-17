@@ -1,6 +1,7 @@
 import socket
 import sctp
 import M2PA
+import MTP3
 
 #VMNet2
 host = '192.168.212.1'
@@ -24,9 +25,16 @@ while True:
             if data:
                 # output received data
                 print ("Data: %s" % str(data))
-                m2pa_header = M2PA.decode(data) 
+                m2pa_header = M2PA.decode(data)
                 print(m2pa_header)
-                connection.sendall(bytes.fromhex(data))
+                if m2pa_header['message_type'] == 'Link Status':
+                    print("This is a link status message, so we'll echo it back.")
+                    connection.sendall(bytes.fromhex(data))
+                else:
+                    print("This has a payload in it, let's parse the payload!")
+                    print(m2pa_header['payload'])
+                    mtp3_header = MTP3.decode(m2pa_header['payload'])
+
             else:
                 # no more data -- quit the loop
                 print ("no more data.")
