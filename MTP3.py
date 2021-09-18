@@ -26,16 +26,23 @@ ServiceIndicator = {
 }
 
 
-def Respond_MTP3_Management(mtp3_header):
+def Respond_MTP3_Management(m2pa_header, mtp3_header):
     print("Processing MTP3 Management Header")
     if int(mtp3_header['mpt3_management']['message']) == 1:
         #Signaling Link-Check Message - Change to response then echo back what we recieved.
         print("MTP3 Management 'Signaling Link-Check Message' recieved. Generating response...")
-
+        print(m2pa_header)
+        print(mtp3_header)
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
-            'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}})
+            'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
         print("routing_indicator_bin is " + str(mtp3_header_bin))
-        m2pa_header = {"payload" : mtp3_header_bin, "bsn" : 1, "fsn" : 1, "priority" : "06"}
+        
+        if m2pa_header['bsn'] == 16777215:
+            fsn = 1
+        else:
+            fsn = fsn = m2pa_header['bsn'] + 1
+
+        m2pa_header = {"payload" : mtp3_header_bin, "bsn" : m2pa_header['fsn'], "fsn" : fsn, "priority" : "06"}
         m2pa_header_bin = M2PA.encode(m2pa_header)
         mtp3_mgmt_header_bin = "21201112"
         print("m2pa_header_bin: " + str(m2pa_header_bin))
@@ -46,10 +53,10 @@ def Respond_MTP3_Management(mtp3_header):
         return mtp3_header
 
 
-def decode(data):
+def decode(m2pa_header):
     print("Decoding MTP3")
-    mtp3_header = MTP3_Decoder.MTP3_Decode(data)
-    mtp3_header['payload'] = data[10:]
+    mtp3_header = MTP3_Decoder.MTP3_Decode(m2pa_header['payload'])
+    mtp3_header['payload'] = m2pa_header['payload'][10:]
     if mtp3_header['sio_data']['service_indicator'] == 1:
         print("MTP3 Management Layer present!")
         mpt3_management = {}
@@ -59,7 +66,7 @@ def decode(data):
         mpt3_management['length'] = 2       #ToDo - Fix this
         mpt3_management['payload'] = mtp3_header['payload'][10:]
         mtp3_header['mpt3_management'] = mpt3_management
-        return Respond_MTP3_Management(mtp3_header)      
+        return Respond_MTP3_Management(m2pa_header, mtp3_header)      
     else:
         print("Contains upper layer protocol. Passing on for further processing.")
         return mtp3_header

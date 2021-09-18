@@ -31,11 +31,11 @@ def decode(data):
         position = position+8
         m2pa_header['unused1'] = data[position:position+2]
         position = position+2
-        m2pa_header['bsn'] = data[position:position+6]
+        m2pa_header['bsn'] = int(str(data[position:position+6]), 16)
         position = position+6
         m2pa_header['unused2'] = data[position:position+2]
         position = position+2
-        m2pa_header['fsn'] = data[position:position+6]
+        m2pa_header['fsn'] = int(str(data[position:position+6]), 16)
         position = position+6
         if m2pa_header['message_type'] == "Link Status":
             m2pa_header['link_status'] = data[position:position+8]
