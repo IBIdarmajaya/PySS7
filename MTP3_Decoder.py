@@ -22,24 +22,24 @@ def Convert_Decimal_To_Bin(decimal_value, length):
 
 def Convert_Routing_Label_Data(dpc, opc, link_selector):
         dpc = Convert_Decimal_To_Bin(dpc, length=14)
-        print("dpc converted to decimal is " + str(dpc))
+        #print("dpc converted to decimal is " + str(dpc))
         opc = Convert_Decimal_To_Bin(opc, length=14)
-        print("opc converted to decimal is " + str(opc))
+        #print("opc converted to decimal is " + str(opc))
         link_selector = Convert_Decimal_To_Bin(link_selector, length=4)
-        print("link_selector converted to decimal is " + str(link_selector))
+        #print("link_selector converted to decimal is " + str(link_selector))
         
         byte4_value = int(opc[:4], 2) + (int(link_selector,2) << 4)
         byte3_value = int(opc[4:12], 2)
         byte2_value = int(dpc[:6], 2) + (int(opc[-2:], 2) << 6)
         byte1_value = int(dpc[-8:],2)
         bytes_values = (byte1_value, byte2_value, byte3_value, byte4_value)
-        print(bytes_values)
+        #print(bytes_values)
 
         
         mtp3_routing_label_pattern = struct.Struct(">B B B B")
         #print("mtp3_routing_label_pattern: " + str(mtp3_routing_label_pattern))
         binary_routing_label_data = mtp3_routing_label_pattern.pack(*bytes_values)
-        print("binary_routing_label_data: " + str(binary_routing_label_data))
+        #print("binary_routing_label_data: " + str(binary_routing_label_data))
         return binary_routing_label_data
 
 
@@ -83,10 +83,10 @@ def Link_Selector_Value_Forming(binary_data):
 def MTP3_Routing_Label_Forming(mtp3_object, binary_routing_label_data):
         dpc = DPC_Value_Forming(binary_routing_label_data)
         opc = OPC_Value_Forming(binary_routing_label_data)
-        print("DPC is: " + str(dpc))
-        print("OPC is: " + str(opc))
+        #print("DPC is: " + str(dpc))
+        #print("OPC is: " + str(opc))
         link_selector = Link_Selector_Value_Forming(binary_routing_label_data)
-        print("Link Selector is: " + str(link_selector))
+        #print("Link Selector is: " + str(link_selector))
         routing_label = mtp3_object.Routing_Label(dpc=dpc, opc=opc, link_selector=link_selector)
         return routing_label
 
@@ -182,7 +182,7 @@ class Message_Parser:
 		return link_selector_value
 
 	def MTP3_Routing_Label_Forming(self, mtp3_object, binary_routing_label_data):
-		print("At MTP3_Routing_Label_Forming")
+		#print("At MTP3_Routing_Label_Forming")
 		dpc = self.DPC_Value_Forming(binary_routing_label_data)
 		opc = self.OPC_Value_Forming(binary_routing_label_data)
 		link_selector = self.Link_Selector_Value_Forming(binary_routing_label_data)
@@ -190,14 +190,14 @@ class Message_Parser:
 		routing_label['opc'] = opc
 		routing_label['dpc'] = dpc
 		routing_label['link_selector'] = link_selector
-		print("Completed Routing Label output of " + str(routing_label))	
+		#print("Completed Routing Label output of " + str(routing_label))	
 		return routing_label
 
 	def MTP3_Protocol_Data_Handling(self, binary_protocol_data):
-		print("Called MTP3_Protocol_Data_Handling")
+		#print("Called MTP3_Protocol_Data_Handling")
 		#MTP3 object building
 		mtp3_data = MTP3_Data()
-		print("Defined mtp3_data: " + str(mtp3_data))
+		#print("Defined mtp3_data: " + str(mtp3_data))
 		output = {}
 		#Building SIO data
 		output['sio_data'] = self.MTP3_Service_Information_Octet_Forming(mtp3_object=mtp3_data, binary_sio_data=binary_protocol_data[:1])
@@ -215,12 +215,16 @@ def MTP3_Decode(data):
 
 def MTP3_Routing_Indicator_Encode(data):
 	print("Encoding data " + str(data))
-	bin_data = (Convert_Routing_Label_Data(\
+	sio = str(data['sio_data']['network_indicator']).zfill(2) + "00" + str(data['sio_data']['service_indicator']).zfill(4)
+	sio_hex = hex(int(sio, 2))[2:].zfill(2)
+	#print(sio_hex)
+	routing_label = (Convert_Routing_Label_Data(\
 		data['routing_label']['dpc'], \
 		data['routing_label']['opc'], \
 		data['routing_label']['link_selector'])\
 		)
-	return bin_data.hex()
+	return sio_hex + str(routing_label.hex())
 
 #print(MTP3_Routing_Indicator_Decode('0111d8040211201112'))
-#print(MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 1, 'spare': 0}, 'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}}))
+#print(MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
+#            'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}}))

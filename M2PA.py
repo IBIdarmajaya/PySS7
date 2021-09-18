@@ -1,6 +1,7 @@
 
 from socket import EWOULDBLOCK
-
+def BinConvert(data, number_of_bits):
+    return bin(int(str(data), 16))[2:].zfill(number_of_bits)
 
 Link_Status_Alignment = "01000b020000001400ffffff00ffffff00000001"
 Link_Status_Emergency = "01000b020000001400ffffff00ffffff00000003"
@@ -54,5 +55,32 @@ def decode(data):
         raise "Error processing M2UA Header"
 
     return m2pa_header
+
+
+def encode(m2pa_header):
+    print("Encoding M2PA header with inputs " + str(m2pa_header))
+    hexout = ''
+    hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
+    overall_length = 21 + (len(m2pa_header['payload'])/2)
+    if (overall_length % 2) == 0:
+        pass
+    else:
+        print("overall_length is odd number, rouding up")
+        overall_length+= 1
+    print("overall length should be " + str(overall_length))
+    hexout+= format(int(overall_length), 'x').zfill(8)    #Length encoded onto 4 bits
+    hexout+= '00'       #Unused bit
+    hexout+= format(m2pa_header['bsn'], 'x').zfill(6)    #Backwards Sequence Number
+    hexout+= '00'       #Unused bit
+    hexout+= format(m2pa_header['fsn'], 'x').zfill(6)     #Forwards Sequence Number
+    hexout+= str(m2pa_header['priority'])
+    print("Final output is " + str(hexout))
+    return hexout
+
+#m2pa_header = {"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"}
+#encode(m2pa_header)
+###01000b010000001600000001000000010613480406 #Desired
+###01000b010000001a00ffffff0000000009
+
 
 #print(decode("01000b010000001a00ffffff00000000090111d8040211201112"))
