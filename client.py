@@ -7,7 +7,7 @@ import sys
 
 #VMNet2
 host = '192.168.212.1'
-port = 1026
+port = 1027
 
 
 
@@ -40,7 +40,7 @@ while True:
                     connection.sctp_send(bytes.fromhex(data), ppid=htonl(5))
                 else:
                     #print("This has a payload in it, let's parse the payload!")
-                    print(m2pa_header['payload'])
+                    print("M2PA payload is" + str(m2pa_header['payload']))
                     mtp3_header = MTP3.decode(m2pa_header)
                     print("Current stream_id is " + str(stream_id))
                     if 'response' in mtp3_header:

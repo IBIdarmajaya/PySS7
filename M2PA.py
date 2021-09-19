@@ -53,7 +53,7 @@ def decode(data):
         print("MTP2: Stalled Position: " + str(position))
         print("MTP2: Stalled Data Remaining: " + str(data[position:]))
         raise "MTP2: Error processing M2UA Header"
-
+    print("M2PA: Decoded - Output " + str(m2pa_header))
     return m2pa_header
 
 

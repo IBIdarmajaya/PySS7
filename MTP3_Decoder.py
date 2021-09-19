@@ -215,9 +215,9 @@ def MTP3_Decode(data):
 
 def MTP3_Routing_Indicator_Encode(data):
 	print("Encoding data " + str(data))
-	sio = str(data['sio_data']['network_indicator']).zfill(2) + "00" + str(data['sio_data']['service_indicator']).zfill(4)
+	sio = str("{0:b}".format(data['sio_data']['network_indicator']).zfill(2)) + "00" + str("{0:b}".format(data['sio_data']['service_indicator']).zfill(4))
 	sio_hex = hex(int(sio, 2))[2:].zfill(2)
-	#print(sio_hex)
+	print(sio_hex)
 	routing_label = (Convert_Routing_Label_Data(\
 		data['routing_label']['dpc'], \
 		data['routing_label']['opc'], \

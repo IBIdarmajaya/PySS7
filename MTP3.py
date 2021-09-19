@@ -34,12 +34,12 @@ def FSN_Inc(input):
 
 def Respond_MTP3_Management(m2pa_header, mtp3_header):
     print("Processing MTP3 Management Header")
-    # if int(mtp3_header['mpt3_management']['message']) == 1:
-    if 1 == 1:
+    print(m2pa_header)
+    print(mtp3_header)
+
+    if (int(mtp3_header['mpt3_management']['message']) == 1) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
         #Signaling Link-Check Message - Change to response then echo back what we recieved.
-        print("MTP3 Management 'Signaling Link-Check Message' recieved. Generating response...")
-        print(m2pa_header)
-        print(mtp3_header)
+        print("MTP3 Management 'Signaling Link-Check Message' recieved. Generating echo response with swapped Point Codes......")
 
         #Common MTP3 Header
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
@@ -47,43 +47,36 @@ def Respond_MTP3_Management(m2pa_header, mtp3_header):
         
         print("mtp3_header_bin is " + str(mtp3_header_bin))
         
-        #Generate my own SLT Message to send before we ack this
         m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_header['payload']), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
         mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_header['payload'])    #Send SLTM / Signaling Link Test Message
 
+    elif (int(mtp3_header['mpt3_management']['message']) == 2) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
+        #Signaling Link-Check Acknowledgement - Change to response then echo back what we recieved.
+        print("MTP3 Management 'Signaling Link-Check Acknowledgement' recieved. Generating echo response with swapped Point Codes......")
 
-
-    # elif int(mtp3_header['mpt3_management']['message']) == 2:
-    #     #Signaling Link Test Ack recieved
-    #     #Now we can bring the link online.
-    #     #Generate "Traffic Restore Allowed"
-
-    #     #Common MTP3 Header
-    #     mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
-    #         'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
-    #     print("mtp3_header_bin is " + str(mtp3_header_bin))
+        #Common MTP3 Header
+        mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
+            'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
         
+        print("mtp3_header_bin is " + str(mtp3_header_bin))
+        
+        m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_header['payload']), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
+        m2pa_header_bin = M2PA.encode(m2pa_header_new)
+        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_header['payload'])    #Send SLTM / Signaling Link Test Message
+
+    elif (int(mtp3_header['mpt3_management']['message']) == 4) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
+        print("Transfer prohibited allowed - Link now in Service!")
 
 
-    #     #Signaling Link-Check Ack
-    #     #Backwards sequence number should equal the recieved forwards sequence number
-    #     m2pa_header = {"payload" : mtp3_header_bin, "bsn" : m2pa_header['fsn'], "fsn" : 1, "priority" : "09"}
-    #     m2pa_header_bin = M2PA.encode(m2pa_header)
-    #     mtp3_mgmt_header_bin = mtp3_header_bin + "21201112"                   #SLT ACK
-    #     #mtp3_mgmt_header_bin = mtp3_header['payload']       #Just echo back what we recieved
-    #     print("m2pa_header_bin: " + str(m2pa_header_bin))
-    #     print("mtp3_header_bin: " + str(mtp3_header_bin))
-    #     print("mtp3_mgmt_header_bin: " + mtp3_mgmt_header_bin)
-
-    #     mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_mgmt_header_bin)    #Send SLTA / Singnaling Link Test Ack
-
+    elif (int(mtp3_header['mpt3_management']['message']) == 7) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
+        print("Traffic restart allowed - Link now in Service!")
 
 
     else:
         print("No idea how to handle this")
         print(mtp3_header)
-        sys.exit()
+        return
 
     print("mtp3_header['response']: " + str(mtp3_header['response']))
     return mtp3_header
@@ -94,11 +87,24 @@ def decode(m2pa_header):
     mtp3_header = MTP3_Decoder.MTP3_Decode(m2pa_header['payload'])
     mtp3_header['payload'] = m2pa_header['payload'][10:]
     mtp3_header['response'] = []
+    if mtp3_header['sio_data']['service_indicator'] == 0:
+        print("MTP3 Signaling Network Mangement Message (SNM)")
+        #Generate some ISUP Traffic
+        #Common MTP3 Header
+        mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 5}, \
+            'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
+        isup_header_bin = "0e00011100000a03020907039040380982990a06031317734508007989"
+        m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(isup_header_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
+        m2pa_header_bin = M2PA.encode(m2pa_header_new)
+        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + isup_header_bin)
+        print("Generated ISUP Body to send!")
+        return mtp3_header
+
     if mtp3_header['sio_data']['service_indicator'] == 1:
-        print("MTP3 Management Layer present!")
+        print("MTP3 Maintainence Message (MTN)")
         mpt3_management = {}
         mpt3_management['b1'] = BinConvert(mtp3_header['payload'][0:2], 8)
-        mpt3_management['message_group'] = mpt3_management['b1'][4:8]
+        mpt3_management['message_group'] = int(mpt3_management['b1'][4:8], 2)
         mpt3_management['message'] = int(mpt3_management['b1'][0:4], 2)
         mpt3_management['length'] = 2       #ToDo - Fix this
         mpt3_management['payload'] = mtp3_header['payload'][10:]
@@ -108,5 +114,6 @@ def decode(m2pa_header):
         print("Contains upper layer protocol. Passing on for further processing.")
         return mtp3_header
 
-
-#print(decode("0111d8040211201112"))
+# m2pa_header = {}
+# m2pa_header['payload'] = "0011d8040217"
+# print(decode(m2pa_header))
