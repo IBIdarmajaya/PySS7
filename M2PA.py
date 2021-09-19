@@ -61,8 +61,12 @@ def encode(m2pa_header):
     print("MTP2: Encoding M2PA header with inputs " + str(m2pa_header))
     hexout = ''
     hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
-    overall_length = 21 + (len(m2pa_header['payload'])/2)
+    # if 'length' in m2pa_header:
+    #     overall_length = m2pa_header['length']
+    # else:
+    overall_length = 17 + (len(m2pa_header['payload'])/2)
     if (overall_length % 2) == 0:
+        print("MTP2: overall_length is even number, passing")
         pass
     else:
         print("MTP2: overall_length is odd number, rouding up")

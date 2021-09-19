@@ -34,7 +34,8 @@ def FSN_Inc(input):
 
 def Respond_MTP3_Management(m2pa_header, mtp3_header):
     print("Processing MTP3 Management Header")
-    if int(mtp3_header['mpt3_management']['message']) == 1:
+    # if int(mtp3_header['mpt3_management']['message']) == 1:
+    if 1 == 1:
         #Signaling Link-Check Message - Change to response then echo back what we recieved.
         print("MTP3 Management 'Signaling Link-Check Message' recieved. Generating response...")
         print(m2pa_header)
@@ -43,46 +44,39 @@ def Respond_MTP3_Management(m2pa_header, mtp3_header):
         #Common MTP3 Header
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
             'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
+        
         print("mtp3_header_bin is " + str(mtp3_header_bin))
         
-
         #Generate my own SLT Message to send before we ack this
-        m2pa_header_new = {"payload" : mtp3_header_bin, "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
+        m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_header['payload']), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
         mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_header['payload'])    #Send SLTM / Signaling Link Test Message
 
 
-        #Signaling Link-Check Ack
-        #Backwards sequence number should equal the recieved forwards sequence number
-        m2pa_header = {"payload" : mtp3_header_bin, "bsn" : m2pa_header['fsn'], "fsn" : 1, "priority" : "09"}
-        m2pa_header_bin = M2PA.encode(m2pa_header)
-        mtp3_mgmt_header_bin = "21201112"                   #SLT ACK
-        #mtp3_mgmt_header_bin = mtp3_header['payload']       #Just echo back what we recieved
-        print("m2pa_header_bin: " + str(m2pa_header_bin))
-        print("mtp3_header_bin: " + str(mtp3_header_bin))
-        print("mtp3_mgmt_header_bin: " + mtp3_mgmt_header_bin)
 
-        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_mgmt_header_bin)    #Send SLTA / Singnaling Link Test Ack
+    # elif int(mtp3_header['mpt3_management']['message']) == 2:
+    #     #Signaling Link Test Ack recieved
+    #     #Now we can bring the link online.
+    #     #Generate "Traffic Restore Allowed"
 
-
-
-    elif int(mtp3_header['mpt3_management']['message']) == 2:
-        #Signaling Link Test Ack recieved
-        #Now we can bring the link online.
-        #Generate "Traffic Restore Allowed"
-
-        #Common MTP3 Header
-        mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
-            'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
-        print("mtp3_header_bin is " + str(mtp3_header_bin))
+    #     #Common MTP3 Header
+    #     mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
+    #         'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
+    #     print("mtp3_header_bin is " + str(mtp3_header_bin))
         
 
-        #Generate my own SLT Message to send before we ack this
-        m2pa_header_new = {"payload" : mtp3_header_bin, "bsn" : m2pa_header['fsn'], "fsn" : FSN_Inc(m2pa_header['bsn']), "priority" : "09"}       #BSN at ends as this is first message
-        m2pa_header_bin = M2PA.encode(m2pa_header_new)
-        mtp3_mgmt_header_bin = "141118"
-        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_mgmt_header_bin)    #Send SLTM / Signaling Link Test Message
 
+    #     #Signaling Link-Check Ack
+    #     #Backwards sequence number should equal the recieved forwards sequence number
+    #     m2pa_header = {"payload" : mtp3_header_bin, "bsn" : m2pa_header['fsn'], "fsn" : 1, "priority" : "09"}
+    #     m2pa_header_bin = M2PA.encode(m2pa_header)
+    #     mtp3_mgmt_header_bin = mtp3_header_bin + "21201112"                   #SLT ACK
+    #     #mtp3_mgmt_header_bin = mtp3_header['payload']       #Just echo back what we recieved
+    #     print("m2pa_header_bin: " + str(m2pa_header_bin))
+    #     print("mtp3_header_bin: " + str(mtp3_header_bin))
+    #     print("mtp3_mgmt_header_bin: " + mtp3_mgmt_header_bin)
+
+    #     mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_mgmt_header_bin)    #Send SLTA / Singnaling Link Test Ack
 
 
 
