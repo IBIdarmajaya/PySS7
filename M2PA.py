@@ -12,7 +12,7 @@ MessageClass = {'0b' : "M2PA"}
 MessageType = {'1':"User Data", '2' : "Link Status"}
 
 def decode(data):
-    print("Decoding M2PA")
+    print("MTP2: Decoding M2PA")
     try:
         m2pa_header = {}
         position = 0
@@ -47,34 +47,34 @@ def decode(data):
             position = position+2
             m2pa_header['payload'] = data[position:]
     except Exception as E:
-        print("Stumbled processing M2UA Header: " + str(data))
+        print("MTP2: Stumbled processing M2UA Header: " + str(data))
         print(E)
         print(m2pa_header)
-        print("Stalled Position: " + str(position))
-        print("Stalled Data Remaining: " + str(data[position:]))
-        raise "Error processing M2UA Header"
+        print("MTP2: Stalled Position: " + str(position))
+        print("MTP2: Stalled Data Remaining: " + str(data[position:]))
+        raise "MTP2: Error processing M2UA Header"
 
     return m2pa_header
 
 
 def encode(m2pa_header):
-    print("Encoding M2PA header with inputs " + str(m2pa_header))
+    print("MTP2: Encoding M2PA header with inputs " + str(m2pa_header))
     hexout = ''
     hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
     overall_length = 21 + (len(m2pa_header['payload'])/2)
     if (overall_length % 2) == 0:
         pass
     else:
-        print("overall_length is odd number, rouding up")
+        print("MTP2: overall_length is odd number, rouding up")
         overall_length+= 1
-    print("overall length should be " + str(overall_length))
+    print("MTP2: overall length should be " + str(overall_length))
     hexout+= format(int(overall_length), 'x').zfill(8)    #Length encoded onto 4 bits
     hexout+= '00'       #Unused bit
     hexout+= format(m2pa_header['bsn'], 'x').zfill(6)    #Backwards Sequence Number
     hexout+= '00'       #Unused bit
     hexout+= format(m2pa_header['fsn'], 'x').zfill(6)     #Forwards Sequence Number
     hexout+= str(m2pa_header['priority'])
-    print("Final output is " + str(hexout))
+    print("MTP2: Final output is " + str(hexout))
     return hexout
 
 #m2pa_header = {"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"}

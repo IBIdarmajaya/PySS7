@@ -34,14 +34,21 @@ while True:
                 #print(m2pa_header)
                 if m2pa_header['message_type'] == 'Link Status':
                     print("This is a link status message, so we'll echo it back.")
+                    stream_id = connection.get_streamid()
+                    print("Current stream_id is " + str(stream_id))
+                    connection.set_streamid(stream_id)
                     connection.sctp_send(bytes.fromhex(data), ppid=htonl(5))
                 else:
                     #print("This has a payload in it, let's parse the payload!")
                     print(m2pa_header['payload'])
                     mtp3_header = MTP3.decode(m2pa_header)
+                    print("Current stream_id is " + str(stream_id))
                     if 'response' in mtp3_header:
                         print("Got back a response on the MTP3 layer, sending that...")
-                        connection.sctp_send(bytes.fromhex(mtp3_header['response']), ppid=htonl(5))
+                        for response in mtp3_header['response']:
+                            connection.set_streamid(1)
+                            connection.sctp_send(bytes.fromhex(response), ppid=htonl(5))
+                print("\n\n")                            
             else:
                 # no more data -- quit the loop
                 print ("no more data.")
