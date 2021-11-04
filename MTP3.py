@@ -1,3 +1,9 @@
+import logtool
+import logging
+logtool.setup_logger('MTP3 Handler', 'M2PA.log', 'DEBUG')
+mtp3_logger = logging.getLogger('MTP3 Handler')
+mtp3_logger.info("MTP3_Handler_logger Log Initialised.")
+
 import MTP3_Decoder
 import sys
 import M2PA
@@ -33,19 +39,19 @@ def FSN_Inc(input):
 
 
 def Respond_MTP3_Management(m2pa_header, mtp3_header):
-    print("Processing MTP3 Management Header")
-    print(m2pa_header)
-    print(mtp3_header)
+    mtp3_logger.info("Processing MTP3 Management Header")
+    mtp3_logger.debug("MTP2 Header: " + str(m2pa_header))
+    mtp3_logger.debug("MTP3 Header: " + str(mtp3_header))
 
     if (int(mtp3_header['mpt3_management']['message']) == 1) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
         #Signaling Link-Check Message - Change to response then echo back what we recieved.
-        print("MTP3 Management 'Signaling Link-Check Message' recieved. Generating echo response with swapped Point Codes......")
+        mtp3_logger.info("MTP3 Management 'Signaling Link-Check Message' recieved. Generating echo response with swapped Point Codes......")
 
         #Common MTP3 Header
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
             'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
         
-        print("mtp3_header_bin is " + str(mtp3_header_bin))
+        mtp3_logger.debug("mtp3_header_bin is " + str(mtp3_header_bin))
         
         m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_header['payload']), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
@@ -53,42 +59,42 @@ def Respond_MTP3_Management(m2pa_header, mtp3_header):
 
     elif (int(mtp3_header['mpt3_management']['message']) == 2) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
         #Signaling Link-Check Acknowledgement - Change to response then echo back what we recieved.
-        print("MTP3 Management 'Signaling Link-Check Acknowledgement' recieved. Generating echo response with swapped Point Codes......")
+        mtp3_logger.info("MTP3 Management 'Signaling Link-Check Acknowledgement' recieved. Generating echo response with swapped Point Codes......")
 
         #Common MTP3 Header
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
             'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
         
-        print("mtp3_header_bin is " + str(mtp3_header_bin))
+        mtp3_logger.debug("mtp3_header_bin is " + str(mtp3_header_bin))
         
         m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_header['payload']), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
         mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_header['payload'])    #Send SLTM / Signaling Link Test Message
 
     elif (int(mtp3_header['mpt3_management']['message']) == 4) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
-        print("Transfer prohibited allowed - Link now in Service!")
+        mtp3_logger.info("Transfer prohibited allowed - Link now in Service!")
 
 
     elif (int(mtp3_header['mpt3_management']['message']) == 7) and (int(mtp3_header['mpt3_management']['message_group']) == 1):
-        print("Traffic restart allowed - Link now in Service!")
+        mtp3_logger.info("Traffic restart allowed - Link now in Service!")
 
 
     else:
-        print("No idea how to handle this")
-        print(mtp3_header)
+        mtp3_logger.error("No idea how to handle this")
+        mtp3_logger.error(mtp3_header)
         return
 
-    print("mtp3_header['response']: " + str(mtp3_header['response']))
+    mtp3_logger.info("mtp3_header['response']: " + str(mtp3_header['response']))
     return mtp3_header
 
 
 def decode(m2pa_header):
-    print("Decoding MTP3")
+    mtp3_logger.info("Decoding MTP3")
     mtp3_header = MTP3_Decoder.MTP3_Decode(m2pa_header['payload'])
     mtp3_header['payload'] = m2pa_header['payload'][10:]
     mtp3_header['response'] = []
     if mtp3_header['sio_data']['service_indicator'] == 0:
-        print("MTP3 Signaling Network Mangement Message (SNM)")
+        mtp3_logger.info("MTP3 Signaling Network Mangement Message (SNM)")
         #Generate some ISUP Traffic
         #Common MTP3 Header
         mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 5}, \
@@ -97,11 +103,11 @@ def decode(m2pa_header):
         m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(isup_header_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
         mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + isup_header_bin)
-        print("Generated ISUP Body to send!")
+        mtp3_logger.info("Generated ISUP Body to send!")
         return mtp3_header
 
     if mtp3_header['sio_data']['service_indicator'] == 1:
-        print("MTP3 Maintainence Message (MTN)")
+        mtp3_logger.info("MTP3 Maintainence Message (MTN)")
         mpt3_management = {}
         mpt3_management['b1'] = BinConvert(mtp3_header['payload'][0:2], 8)
         mpt3_management['message_group'] = int(mpt3_management['b1'][4:8], 2)
@@ -111,7 +117,7 @@ def decode(m2pa_header):
         mtp3_header['mpt3_management'] = mpt3_management
         return Respond_MTP3_Management(m2pa_header, mtp3_header)      
     else:
-        print("Contains upper layer protocol. Passing on for further processing.")
+        mtp3_logger.info("Contains upper layer protocol. Passing on for further processing.")
         return mtp3_header
 
 # m2pa_header = {}

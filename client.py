@@ -6,20 +6,23 @@ from socket import htonl
 import sys
 import logtool
 import logging
+import yaml
+import redis
+with open("config.yaml", 'r') as stream:
+    yaml_config = (yaml.safe_load(stream))
+
 
 logtool.setup_logger('SCTP Handler', 'SCTP.log', 'DEBUG')
 sctp_logger = logging.getLogger('SCTP Handler')
 sctp_logger.info("SCTP_Handler_logger Log Initialised.")
 
-#VMNet2
-host = '192.168.212.1'
-port = 1027
-
-
+sctp_logger.info("YAML config values: ")
+for keys in yaml_config['sctp']:
+    sctp_logger.info("\tKey: " + str(keys) + "\t Value: " + str(yaml_config['sctp'][keys]))
 
 sock = sctp.sctpsocket_tcp(socket.AF_INET)
 
-sock.bind((host, port))
+sock.bind((str(yaml_config['sctp']['bind_ip']), int(yaml_config['sctp']['bind_port'])))
 sock.listen(1)
 
 while True:  

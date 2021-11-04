@@ -1,4 +1,3 @@
-
 import logtool
 import logging
 logtool.setup_logger('M2PA Handler', 'M2PA.log', 'DEBUG')

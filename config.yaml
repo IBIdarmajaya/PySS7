@@ -1,0 +1,15 @@
+sctp:
+  bind_ip: '192.168.212.1'
+  bind_port: 1027
+
+mtp3:
+  point_code: '1.2.4'
+
+isup:
+  default_point_code: 7.9.1
+
+redis:
+  clear_stats_on_boot: true
+  host: localhost
+  port: 6379
+  

@@ -225,6 +225,31 @@ def MTP3_Routing_Indicator_Encode(data):
 		)
 	return sio_hex + str(routing_label.hex())
 
-#print(MTP3_Routing_Indicator_Decode('0111d8040211201112'))
-#print(MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
-#            'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}}))
+
+# def NickMTP3_Encoder(data):
+# 	print(data)
+# 	response = ''
+# 	response += '01'	#Service Indicator Octet
+# 	link_selector = "{0:b}".format(data['routing_label']['link_selector']).zfill(4)
+# 	print("Link Selector: " + str(link_selector))
+# 	opc = "{0:b}".format(data['routing_label']['opc']).zfill(14)
+# 	print("OPC: " + str(opc) + " is len " + str(len(opc)))
+# 	dpc = "{0:b}".format(data['routing_label']['dpc']).zfill(14)
+# 	print("DPC: " + str(dpc) + " is len " + str(len(dpc)))
+# 	routing_label_bin = link_selector + opc + dpc
+# 	routing_label4 = str(int(routing_label_bin[0:8], 2)).zfill(2)
+# 	print("routing_label4 " + str(routing_label4))
+# 	routing_label3 = str(int(routing_label_bin[8:16], 2)).zfill(2)
+# 	print("routing_label3 " + str(routing_label3))
+# 	routing_label2 = str(int(routing_label_bin[16:24], 2)).zfill(2)
+# 	print("routing_label2 " + str(routing_label2) + " "  + str(routing_label_bin[16:24]))
+# 	routing_label1 = str(int(routing_label_bin[24:32], 2)).zfill(2)
+# 	print("routing_label1 " + str(routing_label1))	
+# 	print("Routing Label " + str(routing_label) + " and in binary is len " + str(len(routing_label_bin)) + " and value " + str(routing_label_bin))
+
+# print(NickMTP3_Encoder({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
+#             'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}}))
+
+# #print(MTP3_Routing_Indicator_Decode('0111d8040211201112'))
+# print(MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 1}, \
+#             'routing_label': {'opc': 2067, 'dpc': 6161, 'link_selector': 0}}))
