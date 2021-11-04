@@ -9,6 +9,7 @@ import logging
 import yaml
 import threading
 from threading import Lock
+import queue_handler
 
 with open("config.yaml", 'r') as stream:
     yaml_config = (yaml.safe_load(stream))
@@ -28,22 +29,6 @@ for keys in yaml_config['sctp']:
 sock = sctp.sctpsocket_tcp(socket.AF_INET)
 sock.bind((str(yaml_config['sctp']['bind_ip']), int(yaml_config['sctp']['bind_port'])))
 sock.listen(1)
-
-def Message_Queue_Monitor(connection, message_queue_name, wait_time):
-    sctp_logger.info("Starting Message_Queue_Monitor() thread for connection " + str(connection) + " monitoring Redis Queue " + str(message_queue_name) + " every " + str(wait_time) + " seconds.")
-    while True:
-        time.sleep(wait_time)
-        #sctp_logger.info("Reading from Redis time!")
-        for i in range(0, redis_store.llen(message_queue_name)):
-            msg_to_send = redis_store.lindex(message_queue_name, i)
-
-            #Remove this key from Redis List
-            redis_store.lrem(message_queue_name, 1, msg_to_send)
-
-            sctp_logger.info("Sending outbound message from " + str(message_queue_name) + " ... value is " + str(msg_to_send))
-            connection.set_streamid(1)
-            connection.sctp_send(msg_to_send, ppid=htonl(5))
-            sctp_logger.info("Sent!")
 
 def SCTP_Client_Handler(connection, client_address):
     try:
@@ -93,7 +78,7 @@ while True:
     t1 = threading.Thread(target=SCTP_Client_Handler, args=(connection, client_address))
     t1.start()
     sctp_logger.info("SCTP_Client_Handler thread started...")
-    t2 = threading.Thread(target=Message_Queue_Monitor, args=(connection, "isup_msg_queue", 0.1))
+    t2 = threading.Thread(target=queue_handler.Message_Queue_Monitor, args=(connection, "isup_msg_queue", 0.1))
     t2.start()
     
 
