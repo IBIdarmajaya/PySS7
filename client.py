@@ -7,10 +7,10 @@ import sys
 import logtool
 import logging
 import yaml
-import redis
+import threading
 with open("config.yaml", 'r') as stream:
     yaml_config = (yaml.safe_load(stream))
-
+import time
 
 logtool.setup_logger('SCTP Handler', 'SCTP.log', 'DEBUG')
 sctp_logger = logging.getLogger('SCTP Handler')
@@ -25,11 +25,11 @@ sock = sctp.sctpsocket_tcp(socket.AF_INET)
 sock.bind((str(yaml_config['sctp']['bind_ip']), int(yaml_config['sctp']['bind_port'])))
 sock.listen(1)
 
-while True:  
-    # wait for a connection
-    sctp_logger.info('Waiting for an SCTP connection...')
-    connection, client_address = sock.accept()
+def worker():
+    """thread worker function"""
+    print('Worker')
 
+def SCTP_Client_Handler(connection, client_address):
     try:
         # show who connected to us
         sctp_logger.info('connection from ' + str(client_address))
@@ -68,3 +68,29 @@ while True:
         # Clean up the connection
         connection.close()
         sctp_logger.warning("Closing connection")
+while True:  
+    # wait for a connection
+    sctp_logger.info('Waiting for an SCTP connection...')
+    connection, client_address = sock.accept()
+    #SCTP_Client_Handler(connection, client_address)
+    t = threading.Thread(target=SCTP_Client_Handler, args=(connection, client_address))
+    t.start()
+    sctp_logger.info("Thread started...")
+    
+    
+    import redis
+    
+    redis_store = redis.Redis(host=str(yaml_config['redis']['host']), port=str(yaml_config['redis']['port']), db=0)
+    while True:
+        time.sleep(1)
+        sctp_logger.info("Reading from Redis time!")
+        for i in range(0, redis_store.llen("isup_msg_queue")):
+            msg_to_send = redis_store.lindex("isup_msg_queue", i)
+
+            #Remove this key from Redis List
+            redis_store.lrem("isup_msg_queue", 1, msg_to_send)
+
+            sctp_logger.info("Got entry from list... Value is " + str(msg_to_send))
+            connection.set_streamid(1)
+            connection.sctp_send(msg_to_send, ppid=htonl(5))
+
