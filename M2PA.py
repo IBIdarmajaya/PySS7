@@ -1,4 +1,10 @@
 
+import logtool
+import logging
+logtool.setup_logger('M2PA Handler', 'M2PA.log', 'DEBUG')
+m2pa_logger = logging.getLogger('M2PA Handler')
+m2pa_logger.info("M2PA_Handler_logger Log Initialised.")
+
 from socket import EWOULDBLOCK
 def BinConvert(data, number_of_bits):
     return bin(int(str(data), 16))[2:].zfill(number_of_bits)
@@ -12,7 +18,7 @@ MessageClass = {'0b' : "M2PA"}
 MessageType = {'1':"User Data", '2' : "Link Status"}
 
 def decode(data):
-    print("MTP2: Decoding M2PA")
+    m2pa_logger.info("Decoding M2PA data: " + str(data))
     try:
         m2pa_header = {}
         position = 0
@@ -47,18 +53,18 @@ def decode(data):
             position = position+2
             m2pa_header['payload'] = data[position:]
     except Exception as E:
-        print("MTP2: Stumbled processing M2UA Header: " + str(data))
-        print(E)
-        print(m2pa_header)
-        print("MTP2: Stalled Position: " + str(position))
-        print("MTP2: Stalled Data Remaining: " + str(data[position:]))
-        raise "MTP2: Error processing M2UA Header"
-    print("M2PA: Decoded - Output " + str(m2pa_header))
+        m2pa_logger.error("Stumbled processing M2UA Header: " + str(data))
+        m2pa_logger.error(E)
+        m2pa_logger.error(m2pa_header)
+        m2pa_logger.error("Stalled Position: " + str(position))
+        m2pa_logger.error("Stalled Data Remaining: " + str(data[position:]))
+        raise "Error processing M2UA Header"
+    m2pa_logger.info("Decoded - Output " + str(m2pa_header))
     return m2pa_header
 
 
 def encode(m2pa_header):
-    print("MTP2: Encoding M2PA header with inputs " + str(m2pa_header))
+    m2pa_logger.info("Encoding M2PA header with inputs " + str(m2pa_header))
     hexout = ''
     hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
     # if 'length' in m2pa_header:
@@ -66,19 +72,19 @@ def encode(m2pa_header):
     # else:
     overall_length = 17 + (len(m2pa_header['payload'])/2)
     if (overall_length % 2) == 0:
-        print("MTP2: overall_length is even number, passing")
+        m2pa_logger.debug("overall_length is even number, passing")
         pass
     else:
-        print("MTP2: overall_length is odd number, rouding up")
+        m2pa_logger.debug("overall_length is odd number, rouding up")
         overall_length+= 1
-    print("MTP2: overall length should be " + str(overall_length))
+    m2pa_logger.debug("overall length should be " + str(overall_length))
     hexout+= format(int(overall_length), 'x').zfill(8)    #Length encoded onto 4 bits
     hexout+= '00'       #Unused bit
     hexout+= format(m2pa_header['bsn'], 'x').zfill(6)    #Backwards Sequence Number
     hexout+= '00'       #Unused bit
     hexout+= format(m2pa_header['fsn'], 'x').zfill(6)     #Forwards Sequence Number
     hexout+= str(m2pa_header['priority'])
-    print("MTP2: Final output is " + str(hexout))
+    m2pa_logger.info("Final output is " + str(hexout))
     return hexout
 
 #m2pa_header = {"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"}
