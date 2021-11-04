@@ -91,19 +91,22 @@ def Respond_MTP3_Management(m2pa_header, mtp3_header):
 def decode(m2pa_header):
     mtp3_logger.info("Decoding MTP3")
     mtp3_header = MTP3_Decoder.MTP3_Decode(m2pa_header['payload'])
+    mtp3_logger.info("mtp3_header value: " + str(mtp3_header))
     mtp3_header['payload'] = m2pa_header['payload'][10:]
     mtp3_header['response'] = []
     if mtp3_header['sio_data']['service_indicator'] == 0:
         mtp3_logger.info("MTP3 Signaling Network Mangement Message (SNM)")
-        #Generate some ISUP Traffic
-        #Common MTP3 Header
-        mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 5}, \
-            'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
-        isup_header_bin = "0e00011100000a03020907039040380982990a06031317734508007989"
-        m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(isup_header_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
-        m2pa_header_bin = M2PA.encode(m2pa_header_new)
-        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + isup_header_bin)
-        mtp3_logger.info("Generated ISUP Body to send!")
+        #MTP3 link is now up in Healthy state
+
+        # #Generate some ISUP Traffic
+        # #Common MTP3 Header
+        # mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 5}, \
+        #     'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
+        # isup_header_bin = "0e00011100000a03020907039040380982990a06031317734508007989"
+        # m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(isup_header_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
+        # m2pa_header_bin = M2PA.encode(m2pa_header_new)
+        # mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + isup_header_bin)
+        # mtp3_logger.info("Generated ISUP Body to send!")
         return mtp3_header
 
     if mtp3_header['sio_data']['service_indicator'] == 1:
@@ -115,7 +118,28 @@ def decode(m2pa_header):
         mpt3_management['length'] = 2       #ToDo - Fix this
         mpt3_management['payload'] = mtp3_header['payload'][10:]
         mtp3_header['mpt3_management'] = mpt3_management
-        return Respond_MTP3_Management(m2pa_header, mtp3_header)      
+        return Respond_MTP3_Management(m2pa_header, mtp3_header)  
+
+
+    if mtp3_header['sio_data']['service_indicator'] == 8:
+        mtp3_logger.info("MTP3 Testing User Part (Ping)")
+        mtp3_header_bin = MTP3_Decoder.MTP3_Routing_Indicator_Encode({'sio_data': {'network_indicator': 0, 'service_indicator' : 8}, \
+             'routing_label': {'opc': mtp3_header['routing_label']['dpc'], 'dpc': mtp3_header['routing_label']['opc'], 'link_selector': 0}})
+        mtp3_logger.info("Length of payload is " + str(len(mtp3_header['payload'])))
+        if int(len(mtp3_header['payload'])/2) == 19:
+            mtp3_logger.info("Incrimenting first bit and returning.")
+            #If length is 19 bytes incriment the first bit and return
+            mtp3_payload_bin = ''
+            mtp3_payload_bin += str(int(mtp3_header['payload'][0:1])+1)
+            mtp3_payload_bin += mtp3_header['payload'][1:]
+        else:
+            mtp3_logger.info("Returning as-is.")
+            mtp3_payload_bin = mtp3_header['payload']
+        m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_payload_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
+        m2pa_header_bin = M2PA.encode(m2pa_header_new)
+        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_payload_bin)        
+        return mtp3_header
+
     else:
         mtp3_logger.info("Contains upper layer protocol. Passing on for further processing.")
         return mtp3_header

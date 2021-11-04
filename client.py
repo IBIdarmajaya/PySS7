@@ -8,9 +8,14 @@ import logtool
 import logging
 import yaml
 import threading
+from threading import Lock
+
 with open("config.yaml", 'r') as stream:
     yaml_config = (yaml.safe_load(stream))
 import time
+
+import redis
+redis_store = redis.Redis(host=str(yaml_config['redis']['host']), port=str(yaml_config['redis']['port']), db=0)
 
 logtool.setup_logger('SCTP Handler', 'SCTP.log', 'DEBUG')
 sctp_logger = logging.getLogger('SCTP Handler')
@@ -21,13 +26,24 @@ for keys in yaml_config['sctp']:
     sctp_logger.info("\tKey: " + str(keys) + "\t Value: " + str(yaml_config['sctp'][keys]))
 
 sock = sctp.sctpsocket_tcp(socket.AF_INET)
-
 sock.bind((str(yaml_config['sctp']['bind_ip']), int(yaml_config['sctp']['bind_port'])))
 sock.listen(1)
 
-def worker():
-    """thread worker function"""
-    print('Worker')
+def Message_Queue_Monitor(connection, message_queue_name, wait_time):
+    sctp_logger.info("Starting Message_Queue_Monitor() thread for connection " + str(connection) + " monitoring Redis Queue " + str(message_queue_name) + " every " + str(wait_time) + " seconds.")
+    while True:
+        time.sleep(wait_time)
+        #sctp_logger.info("Reading from Redis time!")
+        for i in range(0, redis_store.llen(message_queue_name)):
+            msg_to_send = redis_store.lindex(message_queue_name, i)
+
+            #Remove this key from Redis List
+            redis_store.lrem(message_queue_name, 1, msg_to_send)
+
+            sctp_logger.info("Sending outbound message from " + str(message_queue_name) + " ... value is " + str(msg_to_send))
+            connection.set_streamid(1)
+            connection.sctp_send(msg_to_send, ppid=htonl(5))
+            sctp_logger.info("Sent!")
 
 def SCTP_Client_Handler(connection, client_address):
     try:
@@ -68,29 +84,16 @@ def SCTP_Client_Handler(connection, client_address):
         # Clean up the connection
         connection.close()
         sctp_logger.warning("Closing connection")
+
 while True:  
     # wait for a connection
     sctp_logger.info('Waiting for an SCTP connection...')
     connection, client_address = sock.accept()
     #SCTP_Client_Handler(connection, client_address)
-    t = threading.Thread(target=SCTP_Client_Handler, args=(connection, client_address))
-    t.start()
-    sctp_logger.info("Thread started...")
+    t1 = threading.Thread(target=SCTP_Client_Handler, args=(connection, client_address))
+    t1.start()
+    sctp_logger.info("SCTP_Client_Handler thread started...")
+    t2 = threading.Thread(target=Message_Queue_Monitor, args=(connection, "isup_msg_queue", 0.1))
+    t2.start()
     
-    
-    import redis
-    
-    redis_store = redis.Redis(host=str(yaml_config['redis']['host']), port=str(yaml_config['redis']['port']), db=0)
-    while True:
-        time.sleep(1)
-        sctp_logger.info("Reading from Redis time!")
-        for i in range(0, redis_store.llen("isup_msg_queue")):
-            msg_to_send = redis_store.lindex("isup_msg_queue", i)
-
-            #Remove this key from Redis List
-            redis_store.lrem("isup_msg_queue", 1, msg_to_send)
-
-            sctp_logger.info("Got entry from list... Value is " + str(msg_to_send))
-            connection.set_streamid(1)
-            connection.sctp_send(msg_to_send, ppid=htonl(5))
 
