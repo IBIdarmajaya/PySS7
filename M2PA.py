@@ -1,3 +1,4 @@
+#M2PA Handler
 import logtool
 import logging
 logtool.setup_logger('M2PA Handler', 'M2PA.log', 'DEBUG')
@@ -12,63 +13,180 @@ Link_Status_Alignment = "01000b020000001400ffffff00ffffff00000001"
 Link_Status_Emergency = "01000b020000001400ffffff00ffffff00000003"
 Link_Status_Normal = "01000b020000001400ffffff00ffffff00000002"
 
-LinkStatus = {'1':"Alignment", '2' : "Proving Normal", '3' : "Proving Emergency", '4':"Ready", '5':"Processor Outage", '6':"Processor Recovered", '7':"Busy", '8':"Busy Ended", '9':"Out of Service"}
+LinkStatus = {1 :"Alignment", 2 : "Proving Normal", 3 : "Proving Emergency", 4 :"Ready", 5 :"Processor Outage", 6 :"Processor Recovered", 7 :"Busy", 8 :"Busy Ended", 9 :"Out of Service"}
 MessageClass = {'0b' : "M2PA"}
-MessageType = {'1':"User Data", '2' : "Link Status"}
+MessageType = {1 :"User Data", 2 : "Link Status"}
 
-def decode(data):
-    m2pa_logger.info("Decoding M2PA data: " + str(data))
-    try:
-        m2pa_header = {}
-        position = 0
-        m2pa_header['version'] = data[position:position+2]
-        position = position+2
-        m2pa_header['spare'] = data[position:position+2]
-        position = position+2
-        m2pa_header['message_class'] = data[position:position+2]
-        m2pa_header['message_class'] = MessageClass[str(m2pa_header['message_class'])]
-        position = position+2
-        m2pa_header['message_type'] = data[position:position+2]
-        m2pa_header['message_type'] = MessageType[str(int(m2pa_header['message_type']))]
-        position = position+2
-        m2pa_header['message_length'] = data[position:position+8]
-        m2pa_header['message_length'] = int(m2pa_header['message_length'], 16)
-        position = position+8
-        m2pa_header['unused1'] = data[position:position+2]
-        position = position+2
-        m2pa_header['bsn'] = int(str(data[position:position+6]), 16)
-        position = position+6
-        m2pa_header['unused2'] = data[position:position+2]
-        position = position+2
-        m2pa_header['fsn'] = int(str(data[position:position+6]), 16)
-        position = position+6
-        if m2pa_header['message_type'] == "Link Status":
-            m2pa_header['link_status'] = data[position:position+8]
-            m2pa_header['link_status'] = LinkStatus[str(int(m2pa_header['link_status']))]
-            position = position+8
-            m2pa_header['payload'] = data[position:]
-        elif m2pa_header['message_type'] == "User Data":
-            m2pa_header['priority'] = data[position:position+2]
+class M2PA:
+
+    def __init__(self, **kwargs):
+        self.m2pa_header = {}
+        if 'version' not in self.m2pa_header:
+            self.version(1)
+        if 'message_class' not in self.m2pa_header:
+            self.message_class(11)
+        if 'message_type' not in self.m2pa_header:
+            self.message_type(2)
+        if 'fsn' not in self.m2pa_header:
+            self.fsn(1)
+        if 'bsn' not in self.m2pa_header:
+            self.bsn(16777214)
+        if 'priority' not in self.m2pa_header:
+            self.priority(1)
+        if 'payload' not in self.m2pa_header:
+            self.payload('')
+
+    def version(self, version):
+        if version != 1:
+            raise ValueError("Invalid version - Only version 1 are valid per RFC4165")
+        self.m2pa_header['version'] = version
+
+    def message_class(self, message_class):
+        if message_class != 11:
+            raise ValueError("Invalid message class - Only Message Class 11 (M2PA Messages) are valid per RFC4165")      
+        self.m2pa_header['message_class'] = message_class
+
+    def message_type(self, message_type):
+        if message_type not in [1, 2]:
+            raise ValueError("Invalid message type - Only Message Types 1 & 2 (1 User Data & 2 Link Status) are valid per RFC4165")      
+        m2pa_logger.info("Message Type is " + str(message_type) + " " + MessageType[message_type])
+        self.m2pa_header['message_type'] = message_type
+
+    def bsn(self, bsn):
+        #Check valid range for BSN
+        if bsn not in range(0, 16777216):
+            raise ValueError("Invalid BSN - Out of range.")
+        self.m2pa_header['bsn'] = bsn
+
+    def fsn(self, fsn):
+        #Check valid range for FSN
+        if fsn not in range(0, 16777216):
+            raise ValueError("Invalid FSN - Out of range.")
+        self.m2pa_header['fsn'] = fsn
+
+    def priority(self, priority):
+        self.m2pa_header['priority'] = priority
+
+    def payload(self, payload):
+        self.m2pa_header['payload'] = payload
+
+    def getDict(self):
+        return self.m2pa_header
+
+    def setDict(self, dict):
+        if 'version' not in dict:
+            self.version(1)
+        else:
+            self.version(dict['version'])
+
+        if 'message_class' not in dict:
+            self.message_class(11)
+        else:
+            self.message_class(dict['message_class'])   
+
+        if 'message_type' not in dict:
+            self.message_type(2)
+        else:
+            self.version(dict['version'])            
+
+        if 'fsn' not in dict:
+            self.fsn(1)
+        else:
+            self.fsn(dict['fsn'])            
+
+        if 'bsn' not in dict:
+            self.bsn(16777214)
+        else:
+            self.bsn(dict['bsn'])            
+
+        if 'priority' not in dict:
+            self.priority(1)
+        else:
+            self.priority(dict['priority'])
+
+        if 'payload' not in dict:
+            self.payload('')
+        else:
+            self.payload(dict['payload'])
+
+    def encodePDU(self):
+        m2pa_logger.info("Encoding M2PA header with inputs " + str(self.m2pa_header))
+        hexout = ''
+        hexout+= format(self.m2pa_header['version'], 'x').zfill(2)              #Version - Release 1
+        hexout+= '00'                                                           #Spare Bit - Unused in RFC
+        hexout+= format(self.m2pa_header['message_class'], 'x').zfill(2)        #Message Class (11 / M2PA)
+        hexout+= format(self.m2pa_header['message_type'], 'x').zfill(2)         #Message Type (Valid values 1 &2)
+
+        #Handle setting Length
+        overall_length = 17 + (len(self.m2pa_header['payload'])/2)
+        if (overall_length % 2) == 0:
+            m2pa_logger.debug("overall_length is even number, passing")
+            pass
+        else:
+            m2pa_logger.debug("overall_length is odd number, rouding up")
+            overall_length+= 1
+        m2pa_logger.debug("overall length should be " + str(overall_length))
+
+        hexout+= format(int(overall_length), 'x').zfill(8)                      #Length encoded onto 4 bits
+        hexout+= '00'       #Unused bit
+        hexout+= format(self.m2pa_header['bsn'], 'x').zfill(6)                  #Backwards Sequence Number
+        hexout+= '00'       #Unused bit
+        hexout+= format(self.m2pa_header['fsn'], 'x').zfill(6)                  #Forwards Sequence Number
+        hexout+= str(self.m2pa_header['priority'])                              #ToDo - Better handling of this
+        m2pa_logger.info("Final output is " + str(hexout))
+        return hexout
+
+    def decodePDU(self, data):
+        m2pa_logger.info("Decoding M2PA data: " + str(data))
+        try:
+            m2pa_header = {}
+            position = 0
+            m2pa_header['version'] = data[position:position+2]
             position = position+2
-            m2pa_header['payload'] = data[position:]
-    except Exception as E:
-        m2pa_logger.error("Stumbled processing M2UA Header: " + str(data))
-        m2pa_logger.error(E)
-        m2pa_logger.error(m2pa_header)
-        m2pa_logger.error("Stalled Position: " + str(position))
-        m2pa_logger.error("Stalled Data Remaining: " + str(data[position:]))
-        raise "Error processing M2UA Header"
-    m2pa_logger.info("Decoded - Output " + str(m2pa_header))
-    return m2pa_header
+            m2pa_header['spare'] = data[position:position+2]
+            position = position+2
+            m2pa_header['message_class'] = data[position:position+2]
+            position = position+2
+            m2pa_header['message_type'] = data[position:position+2]
+            position = position+2
+            m2pa_header['message_length'] = data[position:position+8]
+            m2pa_header['message_length'] = int(m2pa_header['message_length'], 16)
+            position = position+8
+            m2pa_header['unused1'] = data[position:position+2]
+            position = position+2
+            m2pa_header['bsn'] = int(str(data[position:position+6]), 16)
+            position = position+6
+            m2pa_header['unused2'] = data[position:position+2]
+            position = position+2
+            m2pa_header['fsn'] = int(str(data[position:position+6]), 16)
+            position = position+6
+            if m2pa_header['message_type'] == 2:
+                m2pa_header['link_status'] = data[position:position+8]
+                position = position+8
+                m2pa_header['payload'] = data[position:]
+            elif m2pa_header['message_type'] == 1:
+                m2pa_header['priority'] = data[position:position+2]
+                position = position+2
+                m2pa_header['payload'] = data[position:]
+            else:
+                m2pa_logger.error("Failed to determine message type")
+        except Exception as E:
+            m2pa_logger.error("Stumbled processing M2UA Header: " + str(data))
+            m2pa_logger.error(E)
+            m2pa_logger.error(m2pa_header)
+            m2pa_logger.error("Stalled Position: " + str(position))
+            m2pa_logger.error("Stalled Data Remaining: " + str(data[position:]))
+            raise "Error processing M2UA Header"
+        m2pa_logger.info("Decoded - Output " + str(m2pa_header))
+        self.m2pa_header = m2pa_header
+        return m2pa_header
 
 
 def encode(m2pa_header):
     m2pa_logger.info("Encoding M2PA header with inputs " + str(m2pa_header))
     hexout = ''
     hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
-    # if 'length' in m2pa_header:
-    #     overall_length = m2pa_header['length']
-    # else:
+
     overall_length = 17 + (len(m2pa_header['payload'])/2)
     if (overall_length % 2) == 0:
         m2pa_logger.debug("overall_length is even number, passing")
@@ -93,3 +211,20 @@ def encode(m2pa_header):
 
 
 #print(decode("01000b010000001a00ffffff00000000090111d8040211201112"))
+
+a = M2PA()
+print(a.getDict())
+hex = a.encodePDU()
+print(hex)
+a.decodePDU(hex)
+print("\n\n\n")
+
+a.setDict({"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"})
+print(a.getDict())
+hex = a.encodePDU()
+print(hex)
+a.decodePDU("01000b010000001a00ffffff00000000090111d8040211201112")
+
+
+def test_answer():
+    assert a.getDict == {'version': 1, 'message_class': 11, 'message_type': 2, 'fsn': 1, 'bsn': 16777214, 'priority': 1, 'payload': ''}

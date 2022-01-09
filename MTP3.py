@@ -1,5 +1,6 @@
 import logtool
 import logging
+import queue_handler
 logtool.setup_logger('MTP3 Handler', 'M2PA.log', 'DEBUG')
 mtp3_logger = logging.getLogger('MTP3 Handler')
 mtp3_logger.info("MTP3_Handler_logger Log Initialised.")
@@ -107,7 +108,7 @@ def decode(m2pa_header):
         # m2pa_header_bin = M2PA.encode(m2pa_header_new)
         # mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + isup_header_bin)
         # mtp3_logger.info("Generated ISUP Body to send!")
-        return mtp3_header
+        return
 
     if mtp3_header['sio_data']['service_indicator'] == 1:
         mtp3_logger.info("MTP3 Maintainence Message (MTN)")
@@ -137,7 +138,8 @@ def decode(m2pa_header):
             mtp3_payload_bin = mtp3_header['payload']
         m2pa_header_new = {"payload" : str(mtp3_header_bin) + str(mtp3_payload_bin), "bsn" : 16777215, "fsn" : 0, "priority" : "09"}       #BSN at ends as this is first message
         m2pa_header_bin = M2PA.encode(m2pa_header_new)
-        mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_payload_bin)        
+        #mtp3_header['response'].append(m2pa_header_bin + mtp3_header_bin + mtp3_payload_bin)        
+        queue_handler.Add_Queue("isup_msg_queue", mtp3_header)
         return mtp3_header
 
     else:
