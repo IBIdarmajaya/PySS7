@@ -250,11 +250,7 @@ def test_CheckDict():
     #Check Default Dictionary Values
     assert a.getDict() == {'bsn': 16777214, 'link_state' : 9, 'spare' : 0, 'unused1': 0, 'unused2': 0, 'fsn': 1, 'message_class': 11, 'message_type': 2, 'payload': '', 'version': 1}
 
-def test_Compile():
-    # a = M2PA()
-    # #Check Default Values compile as expected
-    # assert a.encodePDU() == "01000b020000001600fffffe0000000100000009"
-
+def test_Compile_LinkStatus():
     a = M2PA()
     #Check Link Status - Alignment
     a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''})
@@ -274,7 +270,8 @@ def test_Compile():
 
 
 
-def test_Decompile():
+def test_Decompile_LinkStatus():
+    a = M2PA()
     #Check Link Status - Alignment
     assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''}
 
@@ -287,3 +284,12 @@ def test_Decompile():
     #Check Link Status - Ready
     assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 4, 'payload': ''}
 
+def test_Decompile_UserData():
+    #Check M2PA message with MTP3 payload
+    assert a.decodePDU("01000b010000001a0000000000000000090113880b0811201112") == {'bsn': 0, 'fsn': 0, 'message_class': 11, 'message_length': 26, 'message_type': 1, 'payload': '0113880b0811201112', 'priority': '09', 'spare': 0, 'unused1': 0, 'unused2': 0, 'version': 1}
+
+def test_Compile_UserData():
+    #Check M2PA message with MTP3 payload
+    a = M2PA()
+    a.setDict({'bsn': 0, 'fsn': 0, 'message_class': 11, 'message_length': 26, 'message_type': 1, 'payload': '0113880b0811201112', 'priority': '09', 'spare': 0, 'unused1': 0, 'unused2': 0, 'version': 1})
+    assert a.encodePDU() == "01000b010000001a0000000000000000090113880b0811201112"
