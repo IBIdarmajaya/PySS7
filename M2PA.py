@@ -227,27 +227,35 @@ class M2PA:
             else:
                 m2pa_logger.error("Failed to determine message type")
         except Exception as E:
-            m2pa_logger.error("Stumbled processing M2UA Header: " + str(data))
+            m2pa_logger.error("Stumbled processing M2PA Header: " + str(data))
             m2pa_logger.error(E)
             m2pa_logger.error(m2pa_header)
             m2pa_logger.error("Stalled Position: " + str(position))
             m2pa_logger.error("Stalled Data Remaining: " + str(data[position:]))
-            raise "Error processing M2UA Header"
+            raise "Error processing M2PA Header"
         m2pa_logger.info("Completed Decoding - Output " + str(m2pa_header))
         self.m2pa_header = m2pa_header
         #self.setDict(m2pa_header)
         return dict(m2pa_header)
 
-
-
-
-a = M2PA()
-#a.decodePDU("01000b020000001400ffffff00ffffff00000001")
-#print(a.getDict())
+    def handle(self, data):
+        m2pa_logger.info("Handling recieved message with raw content: " + str(data))
+        #Decode message
+        self.decodePDU(data)
+        #Handle "User Data" message types
+        if self.m2pa_header['message_type'] == 1:
+            #ToDo
+            pass
+        #Handle "Link Status" message types
+        elif self.m2pa_header['message_type'] == 2:
+            #M2PA expects the Link Status messages to be echoed straight back to it.
+            m2pa_logger.warning("Link State changed to " + str(LinkStatus[self.m2pa_header['link_state']]))
+            return self.encodePDU()
 
 
 def test_CheckDict():
     #Check Default Dictionary Values
+    a = M2PA()
     assert a.getDict() == {'bsn': 16777214, 'link_state' : 9, 'spare' : 0, 'unused1': 0, 'unused2': 0, 'fsn': 1, 'message_class': 11, 'message_type': 2, 'payload': '', 'version': 1}
 
 def test_Compile_LinkStatus():
@@ -286,6 +294,7 @@ def test_Decompile_LinkStatus():
 
 def test_Decompile_UserData():
     #Check M2PA message with MTP3 payload
+    a = M2PA()
     assert a.decodePDU("01000b010000001a0000000000000000090113880b0811201112") == {'bsn': 0, 'fsn': 0, 'message_class': 11, 'message_length': 26, 'message_type': 1, 'payload': '0113880b0811201112', 'priority': '09', 'spare': 0, 'unused1': 0, 'unused2': 0, 'version': 1}
 
 def test_Compile_UserData():
