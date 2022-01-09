@@ -23,6 +23,9 @@ class M2PA:
         self.m2pa_header = {}
         if 'version' not in self.m2pa_header:
             self.version(1)
+        self.spare()
+        self.unused1()
+        self.unused2()
         if 'message_class' not in self.m2pa_header:
             self.message_class(11)
         if 'message_type' not in self.m2pa_header:
@@ -37,18 +40,30 @@ class M2PA:
             self.payload('')
 
     def version(self, version):
+        version = int(version)
         if version != 1:
-            raise ValueError("Invalid version - Only version 1 are valid per RFC4165")
+            raise ValueError("Invalid version " + str(version) + " - Only version 1 are valid per RFC4165")
         self.m2pa_header['version'] = version
 
+    def spare(self):
+        self.m2pa_header['spare'] = 0
+
+    def unused1(self):
+        self.m2pa_header['unused1'] = 0
+
+    def unused2(self):
+        self.m2pa_header['unused2'] = 0
+
     def message_class(self, message_class):
+        message_class = int(message_class)
         if message_class != 11:
             raise ValueError("Invalid message class - Only Message Class 11 (M2PA Messages) are valid per RFC4165")      
         self.m2pa_header['message_class'] = message_class
 
     def message_type(self, message_type):
+        message_type = int(message_type)
         if message_type not in [1, 2]:
-            raise ValueError("Invalid message type - Only Message Types 1 & 2 (1 User Data & 2 Link Status) are valid per RFC4165")      
+            raise ValueError("Invalid message type " + str(message_type) + " - Only Message Types 1 & 2 (1 User Data & 2 Link Status) are valid per RFC4165")      
         m2pa_logger.info("Message Type is " + str(message_type) + " " + MessageType[message_type])
         self.m2pa_header['message_type'] = message_type
 
@@ -113,7 +128,7 @@ class M2PA:
         m2pa_logger.info("Encoding M2PA header with inputs " + str(self.m2pa_header))
         hexout = ''
         hexout+= format(self.m2pa_header['version'], 'x').zfill(2)              #Version - Release 1
-        hexout+= '00'                                                           #Spare Bit - Unused in RFC
+        hexout+= format(self.m2pa_header['spare'], 'x').zfill(2)                #Spare Bit - Unused in RFC
         hexout+= format(self.m2pa_header['message_class'], 'x').zfill(2)        #Message Class (11 / M2PA)
         hexout+= format(self.m2pa_header['message_type'], 'x').zfill(2)         #Message Type (Valid values 1 &2)
 
@@ -128,9 +143,9 @@ class M2PA:
         m2pa_logger.debug("overall length should be " + str(overall_length))
 
         hexout+= format(int(overall_length), 'x').zfill(8)                      #Length encoded onto 4 bits
-        hexout+= '00'       #Unused bit
+        hexout+= format(self.m2pa_header['unused1'], 'x').zfill(2)       #Unused bit1
         hexout+= format(self.m2pa_header['bsn'], 'x').zfill(6)                  #Backwards Sequence Number
-        hexout+= '00'       #Unused bit
+        hexout+= format(self.m2pa_header['unused2'], 'x').zfill(2)       #Unused bit2
         hexout+= format(self.m2pa_header['fsn'], 'x').zfill(6)                  #Forwards Sequence Number
         hexout+= str(self.m2pa_header['priority'])                              #ToDo - Better handling of this
         m2pa_logger.info("Final output is " + str(hexout))
@@ -143,25 +158,27 @@ class M2PA:
             position = 0
             m2pa_header['version'] = data[position:position+2]
             position = position+2
-            m2pa_header['spare'] = data[position:position+2]
+            m2pa_header['spare'] = int(data[position:position+2])
             position = position+2
             m2pa_header['message_class'] = data[position:position+2]
+            m2pa_header['message_class'] = int(str(m2pa_header['message_class']), base=16)
             position = position+2
             m2pa_header['message_type'] = data[position:position+2]
+            m2pa_header['message_type'] = int(str(m2pa_header['message_type']), base=16)
             position = position+2
             m2pa_header['message_length'] = data[position:position+8]
             m2pa_header['message_length'] = int(m2pa_header['message_length'], 16)
             position = position+8
-            m2pa_header['unused1'] = data[position:position+2]
+            m2pa_header['unused1'] = int(data[position:position+2])
             position = position+2
             m2pa_header['bsn'] = int(str(data[position:position+6]), 16)
             position = position+6
-            m2pa_header['unused2'] = data[position:position+2]
+            m2pa_header['unused2'] = int(data[position:position+2])
             position = position+2
             m2pa_header['fsn'] = int(str(data[position:position+6]), 16)
             position = position+6
             if m2pa_header['message_type'] == 2:
-                m2pa_header['link_status'] = data[position:position+8]
+                m2pa_header['link_status'] = int(data[position:position+8])
                 position = position+8
                 m2pa_header['payload'] = data[position:]
             elif m2pa_header['message_type'] == 1:
@@ -179,52 +196,53 @@ class M2PA:
             raise "Error processing M2UA Header"
         m2pa_logger.info("Decoded - Output " + str(m2pa_header))
         self.m2pa_header = m2pa_header
+        self.setDict(m2pa_header)
         return m2pa_header
 
 
-def encode(m2pa_header):
-    m2pa_logger.info("Encoding M2PA header with inputs " + str(m2pa_header))
-    hexout = ''
-    hexout+= '01' + '00' + '0b' + '01' #Version 1, M2PA carrying user data
 
-    overall_length = 17 + (len(m2pa_header['payload'])/2)
-    if (overall_length % 2) == 0:
-        m2pa_logger.debug("overall_length is even number, passing")
-        pass
-    else:
-        m2pa_logger.debug("overall_length is odd number, rouding up")
-        overall_length+= 1
-    m2pa_logger.debug("overall length should be " + str(overall_length))
-    hexout+= format(int(overall_length), 'x').zfill(8)    #Length encoded onto 4 bits
-    hexout+= '00'       #Unused bit
-    hexout+= format(m2pa_header['bsn'], 'x').zfill(6)    #Backwards Sequence Number
-    hexout+= '00'       #Unused bit
-    hexout+= format(m2pa_header['fsn'], 'x').zfill(6)     #Forwards Sequence Number
-    hexout+= str(m2pa_header['priority'])
-    m2pa_logger.info("Final output is " + str(hexout))
-    return hexout
-
-#m2pa_header = {"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"}
-#encode(m2pa_header)
-###01000b010000001600000001000000010613480406 #Desired
-###01000b010000001a00ffffff0000000009
-
-
-#print(decode("01000b010000001a00ffffff00000000090111d8040211201112"))
 
 a = M2PA()
-print(a.getDict())
-hex = a.encodePDU()
-print(hex)
-a.decodePDU(hex)
-print("\n\n\n")
-
-a.setDict({"payload" : "0111d8040211201112", "bsn" : 16777215, "fsn" : 0, "priority" : "09"})
-print(a.getDict())
-hex = a.encodePDU()
-print(hex)
-a.decodePDU("01000b010000001a00ffffff00000000090111d8040211201112")
+#a.decodePDU("01000b020000001400ffffff00ffffff00000001")
+#print(a.getDict())
 
 
-def test_answer():
-    assert a.getDict == {'version': 1, 'message_class': 11, 'message_type': 2, 'fsn': 1, 'bsn': 16777214, 'priority': 1, 'payload': ''}
+def test_CheckDict():
+    #Check Default Dictionary Values
+    assert a.getDict() == {'bsn': 16777214, 'spare' : 0, 'unused1': 0, 'unused2': 0, 'fsn': 1, 'message_class': 11, 'message_type': 2, 'payload': '', 'priority': 1, 'version': 1}
+
+def test_Compile():
+    #Check Default Values compile as expected
+    assert a.encodePDU() == "01000b020000001200fffffe000000011"
+
+    #Check Link Status - Alignment
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': '', 'priority': 1})
+    assert "01000b020000001400ffffff00ffffff00000001" == a.encodePDU()
+
+    #Check Link Status - Proving Emergency
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 3, 'payload': '', 'priority': 1})
+    assert "01000b020000001400ffffff00ffffff00000003" == a.encodePDU()
+
+    #Check Link Status - Proving Normal
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 2, 'payload': '', 'priority': 1})
+    assert "01000b020000001400ffffff00ffffff00000002" == a.encodePDU()
+
+    #Check Link Status - Ready
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 4, 'payload': '', 'priority': 1})
+    assert "01000b020000001400ffffff00ffffff00000004" == a.encodePDU()
+
+
+
+def test_Decompile():
+    #Check Link Status - Alignment
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': '', 'priority': 1}
+
+    #Check Link Status - Proving Emergency
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000003") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 3, 'payload': '', 'priority': 1}
+
+    #Check Link Status - Proving Normal
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000002") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 2, 'payload': '', 'priority': 1}
+
+    #Check Link Status - Ready
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 4, 'payload': '', 'priority': 1}
+
