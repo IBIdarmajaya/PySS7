@@ -54,16 +54,16 @@ def test_Server():
             testlogger.debug("Recieved raw SCTP data: %s" % str(data))
             #Close Socket
             sock_server.close()
-            #Decode M2PA Headers into a dict
-            expected_dict = {'version': 1, 'priority' : 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': ''}
+
+            #Set expected values
+            expected_dict = {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''}
             testlogger.debug("Expected Dict is: " + str(expected_dict))
+
+            #Decode M2PA Headers into a dict
             recieved_dict = m2pa_handler.decodePDU(data)
             testlogger.debug("Recieved Dict is: " + str(recieved_dict))
-            if recieved_dict == expected_dict:
-                testlogger.info("Matches")
-            else:
-                testlogger.info("Differs")
+
+            #Test
             assert expected_dict == recieved_dict
 
 
-test_Server()
