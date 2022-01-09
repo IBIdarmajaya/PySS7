@@ -1,9 +1,13 @@
-#PySS
+# PySS
 
-Python SS7 MTP2 / MTP3 stack.
+Python SS7 stack.
 
-Redis is where we store the messages to send out.
+This library handles SS7 messaging used in telecommunications networks.
 
-The Client listens and comes up with Basic MTP2 / MTP3 responses.
+Combined with an SCTP stack we can support many of the common SS7 protocols in many different splits.
 
-To send messages using upper layers, you need to add the raw bytes to Redis, then they will be sent.
+Each of the modules for each of the layers automatically handles all the nitty-gritty stuff so it can be used to transfer data to develop applications, rather than fiddling around with getting links up.
+
+At the moment this entails support for:
+
+* M2PA Message Transfer Part 2 (MTP2) - User Peer-to-Peer Adaptation Layer (M2PA) as described in [RFC4165](https://datatracker.ietf.org/doc/html/rfc4165)

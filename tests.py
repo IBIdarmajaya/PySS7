@@ -55,7 +55,15 @@ def test_Server():
             #Close Socket
             sock_server.close()
             #Decode M2PA Headers into a dict
-            assert {'version': 1, 'priority' : 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': ''} == m2pa_handler.decodePDU(data)
-            sys.exit()
+            expected_dict = {'version': 1, 'priority' : 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': ''}
+            testlogger.debug("Expected Dict is: " + str(expected_dict))
+            recieved_dict = m2pa_handler.decodePDU(data)
+            testlogger.debug("Recieved Dict is: " + str(recieved_dict))
+            if recieved_dict == expected_dict:
+                testlogger.info("Matches")
+            else:
+                testlogger.info("Differs")
+            assert expected_dict == recieved_dict
+
 
 test_Server()
