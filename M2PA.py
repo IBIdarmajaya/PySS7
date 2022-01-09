@@ -9,9 +9,9 @@ from socket import EWOULDBLOCK
 def BinConvert(data, number_of_bits):
     return bin(int(str(data), 16))[2:].zfill(number_of_bits)
 
-Link_Status_Alignment = "01000b020000001400ffffff00ffffff00000001"
-Link_Status_Emergency = "01000b020000001400ffffff00ffffff00000003"
-Link_Status_Normal = "01000b020000001400ffffff00ffffff00000002"
+link_state_Alignment = "01000b020000001400ffffff00ffffff00000001"
+link_state_Emergency = "01000b020000001400ffffff00ffffff00000003"
+link_state_Normal = "01000b020000001400ffffff00ffffff00000002"
 
 LinkStatus = {1 :"Alignment", 2 : "Proving Normal", 3 : "Proving Emergency", 4 :"Ready", 5 :"Processor Outage", 6 :"Processor Recovered", 7 :"Busy", 8 :"Busy Ended", 9 :"Out of Service"}
 MessageClass = {'0b' : "M2PA"}
@@ -142,6 +142,9 @@ class M2PA:
         else:
             self.payload(dict['payload'])
 
+        if 'link_state' in dict:
+            self.link_state(dict['link_state'])
+
     def encodePDU(self):
         m2pa_logger.info("Encoding M2PA header with inputs " + str(self.m2pa_header))
         hexout = ''
@@ -154,15 +157,15 @@ class M2PA:
         if self.m2pa_header['message_type'] == 2:
         #If the message type is 2 then drop the Payload if set
             m2pa_logger.warning("This is a M2PA Link Status Message but the payload is set. Clearing payload")
-            self.m2pa_header['payload'] = format(self.m2pa_header['link_state'], 'x').zfill(6)
-            m2pa_logger.info("Payload is " + str(self.m2pa_header['payload']))
+            self.m2pa_header['payload'] = format(self.m2pa_header['link_state'], 'x').zfill(8)
+            m2pa_logger.info("Payload is set to " + str(self.m2pa_header['payload']))
             #If Priority is present in Link Status clear it as well
             if 'priority' in self.m2pa_header:
                 m2pa_logger.warning("This is a M2PA Link Status Message but the priority is set. Clearing priority")
                 self.m2pa_header.pop('priority')
 
         #Handle setting Length
-        overall_length = 17 + (len(self.m2pa_header['payload'])/2)
+        overall_length = 16 + (len(self.m2pa_header['payload'])/2)
         if (overall_length % 2) == 0:
             m2pa_logger.debug("overall_length is even number, leaving unchnaged")
             pass
@@ -179,6 +182,9 @@ class M2PA:
         if 'priority' in self.m2pa_header:
             m2pa_logger.debug("Priotity being added")
             hexout+= str(self.m2pa_header['priority'])                          #ToDo - Better handling of this
+
+        hexout+= self.m2pa_header['payload']
+
         m2pa_logger.info("Final output is " + str(hexout))
         return hexout
 
@@ -210,8 +216,8 @@ class M2PA:
             position = position+6
             m2pa_logger.info("Message type is " + str(MessageType[m2pa_header['message_type']]))
             if m2pa_header['message_type'] == 2:
-                m2pa_header['link_status'] = int(data[position:position+8])
-                self.link_state(m2pa_header['link_status'])
+                m2pa_header['link_state'] = int(data[position:position+8])
+                self.link_state(m2pa_header['link_state'])
                 position = position+8
                 m2pa_header['payload'] = data[position:]
             elif m2pa_header['message_type'] == 1:
@@ -245,38 +251,39 @@ def test_CheckDict():
     assert a.getDict() == {'bsn': 16777214, 'link_state' : 9, 'spare' : 0, 'unused1': 0, 'unused2': 0, 'fsn': 1, 'message_class': 11, 'message_type': 2, 'payload': '', 'version': 1}
 
 def test_Compile():
-    
-    #Check Default Values compile as expected
-    assert a.encodePDU() == "01000b020000001400fffffe00000001"
+    # a = M2PA()
+    # #Check Default Values compile as expected
+    # assert a.encodePDU() == "01000b020000001600fffffe0000000100000009"
 
+    a = M2PA()
     #Check Link Status - Alignment
-    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': ''})
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''})
     assert "01000b020000001400ffffff00ffffff00000001" == a.encodePDU()
 
     #Check Link Status - Proving Emergency
-    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 3, 'payload': ''})
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 3, 'payload': ''})
     assert "01000b020000001400ffffff00ffffff00000003" == a.encodePDU()
 
     #Check Link Status - Proving Normal
-    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 2, 'payload': ''})
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 2, 'payload': ''})
     assert "01000b020000001400ffffff00ffffff00000002" == a.encodePDU()
 
     #Check Link Status - Ready
-    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 4, 'payload': ''})
+    a.setDict({'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 4, 'payload': ''})
     assert "01000b020000001400ffffff00ffffff00000004" == a.encodePDU()
 
 
 
 def test_Decompile():
     #Check Link Status - Alignment
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 1, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''}
 
     #Check Link Status - Proving Emergency
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000003") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 3, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000003") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 3, 'payload': ''}
 
     #Check Link Status - Proving Normal
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000002") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 2, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000002") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 2, 'payload': ''}
 
     #Check Link Status - Ready
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_status': 4, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 4, 'payload': ''}
 
