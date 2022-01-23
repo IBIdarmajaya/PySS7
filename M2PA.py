@@ -47,9 +47,10 @@ class M2PA:
         #Set default value if unset
         if 'link_state' not in self.m2pa_header:
             self.m2pa_header['link_state'] = link_state
+            m2pa_logger.warning("Link State changed to '" + str(LinkStatus[link_state]) + "'")
         #Log on state change
         if link_state != self.m2pa_header['link_state']:
-            m2pa_logger.warning("Link State changed to " + str(LinkStatus[link_state]))
+            m2pa_logger.warning("Link State changed to '" + str(LinkStatus[link_state]) + "'")
         self.m2pa_header['link_state'] = link_state
 
     def version(self, version):
@@ -78,7 +79,7 @@ class M2PA:
         if message_type not in [1, 2]:
             raise ValueError("Invalid message type " + str(message_type) + " - Only Message Types 1 & 2 (1 User Data & 2 Link Status) are valid per RFC4165")      
 
-        m2pa_logger.info("Message Type is " + str(message_type) + " " + MessageType[message_type])
+        m2pa_logger.info("Message Type is " + str(message_type) + " '" + MessageType[message_type] + "'")
         self.m2pa_header['message_type'] = message_type
 
     def bsn(self, bsn):
@@ -215,11 +216,12 @@ class M2PA:
             m2pa_header['fsn'] = int(str(data[position:position+6]), 16)
             position = position+6
             m2pa_logger.info("Message type is " + str(MessageType[m2pa_header['message_type']]))
+            #Handle Link State messages
             if m2pa_header['message_type'] == 2:
                 m2pa_header['link_state'] = int(data[position:position+8])
                 self.link_state(m2pa_header['link_state'])
-                position = position+8
-                m2pa_header['payload'] = data[position:]
+                #link state messages do not have a payload.
+            #Handle User Data messages
             elif m2pa_header['message_type'] == 1:
                 m2pa_header['priority'] = data[position:position+2]
                 position = position+2
@@ -239,13 +241,14 @@ class M2PA:
         return dict(m2pa_header)
 
     def handle(self, data):
-        m2pa_logger.info("Handling recieved message with raw content: " + str(data))
+        m2pa_logger.debug("Handling recieved message with raw content: " + str(data))
         #Decode message
         self.decodePDU(data)
         #Handle "User Data" message types
         if self.m2pa_header['message_type'] == 1:
+            m2pa_logger.warning("Handling User Data")
             #ToDo
-            pass
+            return self.getDict(), self.encodePDU()
         #Handle "Link Status" message types
         elif self.m2pa_header['message_type'] == 2:
             #M2PA expects the Link Status messages to be echoed straight back to it.
@@ -281,16 +284,16 @@ def test_Compile_LinkStatus():
 def test_Decompile_LinkStatus():
     a = M2PA()
     #Check Link Status - Alignment
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000001") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 1}
 
     #Check Link Status - Proving Emergency
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000003") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 3, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000003") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 3}
 
     #Check Link Status - Proving Normal
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000002") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 2, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000002") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 2}
 
     #Check Link Status - Ready
-    assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 4, 'payload': ''}
+    assert a.decodePDU("01000b020000001400ffffff00ffffff00000004") == {'version': 1, 'spare': 0, 'message_class': 11, 'message_type': 2, 'message_length': 20, 'unused1': 0, 'bsn': 16777215, 'unused2': 0, 'fsn': 16777215, 'link_state': 4}
 
 def test_Decompile_UserData():
     #Check M2PA message with MTP3 payload
