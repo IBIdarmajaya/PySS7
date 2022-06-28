@@ -1,6 +1,6 @@
-# PySS
+# PySS7
 
-Python SS7 stack.
+*This is a work-in-stalled-progress. Attempting to be a Python implimentation of the SS7 / Sigtran stack. The eventual aim of this project, would be to allow working with SS7 links in a similar manner to sockets, where the lower layers are abstracted away.*
 
 This library handles SS7 messaging used in telecommunications networks.
 
